@@ -1,0 +1,19 @@
+{
+  "name": "script_dependencies",
+  "url": "file:///tmp/script_dependencies",
+  "dependencies": [
+    {
+      "name": "grpc-swift-2",
+      "url": "https://github.com/grpc/grpc-swift-2.git",
+      "version": "2.2.0",
+      "dependencies": [
+        {
+          "name": "swift-nio",
+          "url": "https://github.com/apple/swift-nio.git",
+          "version": "2.90.1",
+          "dependencies": []
+        }
+      ]
+    }
+  ]
+}

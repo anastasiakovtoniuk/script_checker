@@ -8,14 +8,14 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/grpc/grpc-swift-2.git", from: "2.2.0"),
-        .package(url: "https://github.com/grpc/grpc-swift-nio-transport.git", from: "2.0.0")
+        .package(url: "https://github.com/grpc/grpc-swift-nio-transport.git", from: "2.0.0"),
     ],
     targets: [
         .executableTarget(
             name: "script_dependencies",
             dependencies: [
                 .product(name: "GRPCCore", package: "grpc-swift-2"),
-                .product(name: "GRPCNIOTransportHTTP2", package: "grpc-swift-nio-transport")
+                .product(name: "GRPCNIOTransportHTTP2", package: "grpc-swift-nio-transport"),
             ]
         )
     ]
