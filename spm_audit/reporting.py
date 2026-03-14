@@ -16,6 +16,7 @@ def to_text(result: AuditResult) -> str:
         blocks.append(f"Package:   {finding.package.display_name}")
         blocks.append(f"Source:    {finding.package.url or 'unknown'}")
         blocks.append(f"Advisory:  {finding.advisory.id}")
+
         if finding.advisory.severity:
             blocks.append(f"Severity:  {finding.advisory.severity}")
         if finding.advisory.summary:
@@ -24,6 +25,17 @@ def to_text(result: AuditResult) -> str:
             blocks.append("Fixed in:  " + ", ".join(finding.advisory.fixed_versions))
         if finding.advisory.references:
             blocks.append("Refs:      " + ", ".join(finding.advisory.references[:3]))
+
+        if finding.is_direct_dependency:
+            blocks.append("Cause:     Пакет є прямою залежністю проєкту.")
+        elif finding.introduced_by:
+            blocks.append("Cause:     Пакет є транзитивною залежністю.")
+            blocks.append("Introduced by: " + ", ".join(finding.introduced_by))
+        else:
+            blocks.append("Cause:     Не вдалося точно визначити пряму залежність-джерело.")
+
+        if finding.remediation_direction:
+            blocks.append(f"Fix:       {finding.remediation_direction}")
 
         blocks.append("Paths:")
         for path in finding.dependency_paths:
@@ -56,6 +68,9 @@ def to_json(result: AuditResult) -> str:
                     "references": finding.advisory.references,
                 },
                 "dependency_paths": finding.dependency_paths,
+                "introduced_by": finding.introduced_by,
+                "is_direct_dependency": finding.is_direct_dependency,
+                "remediation_direction": finding.remediation_direction,
             }
             for finding in result.findings
         ],

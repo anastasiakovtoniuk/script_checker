@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from .graph import index_paths, load_graph
-from .models import Finding, PackagePin
+from .identifiers import normalize_identity
+from .models import Finding
 from .osv_client import OSVClient
 from .resolved import parse_package_resolved
 
@@ -38,6 +39,72 @@ class AuditResult:
                 return True
 
         return False
+
+
+def _display_identity(display_name: str) -> str:
+    base = display_name.split("@", 1)[0]
+    return normalize_identity(base)
+
+
+def _extract_direct_introducers(package_identity: str, dependency_paths: list[list[str]]) -> tuple[list[str], bool]:
+    """
+    - список прямих залежностей, через які пакет потрапив у проєкт
+    - чи є сам пакет прямою залежністю
+    """
+    direct_introducers: list[str] = []
+
+    for path in dependency_paths:
+        if len(path) >= 2:
+            direct_dep = path[1]
+        elif len(path) == 1:
+            direct_dep = path[0]
+        else:
+            continue
+
+        if direct_dep not in direct_introducers:
+            direct_introducers.append(direct_dep)
+
+    is_direct = any(_display_identity(item) == package_identity for item in direct_introducers)
+    return direct_introducers, is_direct
+
+
+def _build_remediation_direction(
+    package_identity: str,
+    introduced_by: list[str],
+    is_direct_dependency: bool,
+    fixed_versions: list[str],
+) -> str:
+    fixed_hint = ""
+    if fixed_versions:
+        fixed_hint = f" Безпечні версії/виправлення: {', '.join(fixed_versions)}."
+
+    if is_direct_dependency:
+        return (
+            f"Пакет є прямою залежністю. "
+            f"Рекомендовано оновити, замінити або видалити саме {package_identity}."
+            f"{fixed_hint}"
+        )
+
+    if not introduced_by:
+        return (
+            "Не вдалося визначити, яка саме пряма залежність притягнула пакет. "
+            "Потрібно додатково перевірити dependency graph."
+        )
+
+    if len(introduced_by) == 1:
+        return (
+            f"Пакет є транзитивною залежністю. "
+            f"Він потрапив у проєкт через пряму залежність {introduced_by[0]}. "
+            f"Рекомендовано оновити, замінити або прибрати саме цю пряму залежність."
+            f"{fixed_hint}"
+        )
+
+    return (
+        f"Пакет є транзитивною залежністю і потрапляє через кілька прямих залежностей: "
+        f"{', '.join(introduced_by)}. "
+        f"Рекомендовано перевірити оновлення або заміну саме цих прямих залежностей."
+        f"{fixed_hint}"
+    )
 
 
 def analyze_project(
@@ -78,6 +145,11 @@ def analyze_project(
         if not matching_paths:
             matching_paths = [[package.identity]]
 
+        direct_introducers, is_direct = _extract_direct_introducers(
+            package_identity=package.identity,
+            dependency_paths=matching_paths,
+        )
+
         for advisory_ref in advisory_refs:
             if advisory_ref.id.upper() in ignore_ids:
                 continue
@@ -86,14 +158,23 @@ def analyze_project(
                 detail = client.get_vulnerability(advisory_ref.id)
             else:
                 from .models import AdvisoryDetail
-
                 detail = AdvisoryDetail(id=advisory_ref.id, modified=advisory_ref.modified)
+
+            remediation_direction = _build_remediation_direction(
+                package_identity=package.identity,
+                introduced_by=direct_introducers,
+                is_direct_dependency=is_direct,
+                fixed_versions=detail.fixed_versions,
+            )
 
             findings.append(
                 Finding(
                     package=package,
                     advisory=detail,
                     dependency_paths=matching_paths,
+                    introduced_by=direct_introducers,
+                    is_direct_dependency=is_direct,
+                    remediation_direction=remediation_direction,
                 )
             )
 

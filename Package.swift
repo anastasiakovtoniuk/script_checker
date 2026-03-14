@@ -1,21 +1,22 @@
-// swift-tools-version: 6.1
+// swift-tools-version: 6.0
 import PackageDescription
 
 let package = Package(
-    name: "script_dependencies",
+    name: "script_checker",
     platforms: [
         .macOS(.v14)
     ],
+    products: [
+        .executable(name: "script_dependencies", targets: ["script_dependencies"])
+    ],
     dependencies: [
-        .package(url: "https://github.com/grpc/grpc-swift-2.git", from: "2.2.0"),
-        .package(url: "https://github.com/grpc/grpc-swift-nio-transport.git", from: "2.0.0"),
+        .package(url: "https://github.com/apple/swift-nio-http2.git", exact: "1.37.0")
     ],
     targets: [
         .executableTarget(
             name: "script_dependencies",
             dependencies: [
-                .product(name: "GRPCCore", package: "grpc-swift-2"),
-                .product(name: "GRPCNIOTransportHTTP2", package: "grpc-swift-nio-transport"),
+                .product(name: "NIOHTTP2", package: "swift-nio-http2")
             ]
         )
     ]

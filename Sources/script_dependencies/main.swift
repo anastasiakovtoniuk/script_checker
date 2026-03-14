@@ -1,4 +1,3 @@
-import GRPCCore
-import GRPCNIOTransportHTTP2
+import NIOHTTP2
 
-print("dep audit")
+print("vulnerable dependency demo: swift-nio-http2")

@@ -43,3 +43,6 @@ class Finding:
     package: PackagePin
     advisory: AdvisoryDetail
     dependency_paths: list[list[str]]
+    introduced_by: list[str] = field(default_factory=list)
+    is_direct_dependency: bool = False
+    remediation_direction: str | None = None
