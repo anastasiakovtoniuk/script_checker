@@ -23,8 +23,6 @@ def to_text(result: AuditResult) -> str:
             blocks.append(f"Summary:   {finding.advisory.summary}")
         if finding.advisory.fixed_versions:
             blocks.append("Fixed in:  " + ", ".join(finding.advisory.fixed_versions))
-        if finding.advisory.references:
-            blocks.append("Refs:      " + ", ".join(finding.advisory.references[:3]))
 
         if finding.is_direct_dependency:
             blocks.append("Cause:     Пакет є прямою залежністю проєкту.")
@@ -36,6 +34,24 @@ def to_text(result: AuditResult) -> str:
 
         if finding.remediation_direction:
             blocks.append(f"Fix:       {finding.remediation_direction}")
+
+        if finding.fix_candidate:
+            blocks.append(
+                f"Auto-fix candidate: target={finding.fix_candidate.target_dependency}, "
+                f"version={finding.fix_candidate.suggested_version}, "
+                f"supported={finding.fix_candidate.supported}"
+            )
+            blocks.append(f"Auto-fix note: {finding.fix_candidate.note}")
+
+        if finding.verification:
+            blocks.append(
+                f"Auto-verify: attempted={finding.verification.attempted}, "
+                f"resolve_success={finding.verification.resolve_success}, "
+                f"verified_safe={finding.verification.verified_safe}"
+            )
+            blocks.append(f"Auto-verify note: {finding.verification.note}")
+            if finding.verification.temp_project_dir:
+                blocks.append(f"Temp copy:  {finding.verification.temp_project_dir}")
 
         blocks.append("Paths:")
         for path in finding.dependency_paths:
@@ -71,6 +87,30 @@ def to_json(result: AuditResult) -> str:
                 "introduced_by": finding.introduced_by,
                 "is_direct_dependency": finding.is_direct_dependency,
                 "remediation_direction": finding.remediation_direction,
+                "fix_candidate": (
+                    {
+                        "target_dependency": finding.fix_candidate.target_dependency,
+                        "suggested_version": finding.fix_candidate.suggested_version,
+                        "strategy": finding.fix_candidate.strategy,
+                        "supported": finding.fix_candidate.supported,
+                        "note": finding.fix_candidate.note,
+                    }
+                    if finding.fix_candidate
+                    else None
+                ),
+                "verification": (
+                    {
+                        "attempted": finding.verification.attempted,
+                        "resolve_success": finding.verification.resolve_success,
+                        "vulnerability_removed": finding.verification.vulnerability_removed,
+                        "verified_safe": finding.verification.verified_safe,
+                        "temp_project_dir": finding.verification.temp_project_dir,
+                        "output": finding.verification.output,
+                        "note": finding.verification.note,
+                    }
+                    if finding.verification
+                    else None
+                ),
             }
             for finding in result.findings
         ],

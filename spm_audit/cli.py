@@ -5,68 +5,27 @@ import os
 import sys
 
 from .analyzer import analyze_project
+from .autofix import apply_fix_in_temp_copy, build_fix_candidate
+from .autoverify import verify_fix
 from .reporting import to_json, to_text
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Audit SwiftPM dependencies from Package.resolved against OSV, "
-            "then map vulnerable packages back to dependency paths."
-        )
-    )
-    parser.add_argument(
-        "--project-dir",
-        default=".",
-        help="Directory with Package.swift (default: current dir).",
-    )
-    parser.add_argument(
-        "--resolved",
-        default="Package.resolved",
-        help="Path to Package.resolved (default: Package.resolved).",
-    )
-    parser.add_argument(
-        "--graph-json",
-        help="Optional path to JSON from `swift package show-dependencies --format json`.",
-    )
-    parser.add_argument(
-        "--lookup",
-        choices=["auto", "commit", "version"],
-        default="auto",
-        help="OSV lookup mode. 'auto' prefers commit and falls back to version.",
-    )
-    parser.add_argument(
-        "--api-base",
-        default="https://api.osv.dev/v1",
-        help="OSV API base URL.",
-    )
-    parser.add_argument(
-        "--format",
-        choices=["text", "json"],
-        default="text",
-        help="Output format.",
-    )
-    parser.add_argument(
-        "--ignore-advisory",
-        action="append",
-        default=[],
-        help="Advisory ID to ignore. Repeatable.",
-    )
-    parser.add_argument(
-        "--no-details",
-        action="store_true",
-        help="Skip GET /v1/vulns/<id> calls and print only advisory ids from querybatch.",
-    )
-    parser.add_argument(
-        "--fail-on-any-vuln",
-        action="store_true",
-        help="Exit with code 1 when any vulnerability is found.",
-    )
-    parser.add_argument(
-        "--fail-on-severity",
-        choices=["low", "medium", "high", "critical"],
-        help="Exit with code 1 if a finding of this severity or above is found.",
-    )
+    parser = argparse.ArgumentParser(description="SwiftPM dependency vulnerability audit via OSV")
+    parser.add_argument("--project-dir", default=".", help="Шлях до кореня SwiftPM-проєкту")
+    parser.add_argument("--resolved", default="Package.resolved", help="Шлях до Package.resolved відносно project-dir")
+    parser.add_argument("--graph-json", default=None, help="Готовий JSON з swift package show-dependencies")
+    parser.add_argument("--lookup", default="auto", choices=["auto", "version", "commit"])
+    parser.add_argument("--api-base", default="https://api.osv.dev/v1")
+    parser.add_argument("--format", default="text", choices=["text", "json"])
+    parser.add_argument("--fail-on-any-vuln", action="store_true")
+    parser.add_argument("--fail-on-severity", default=None)
+    parser.add_argument("--ignore-advisory", action="append", default=[])
+    parser.add_argument("--no-details", action="store_true")
+
+    parser.add_argument("--auto-fix", action="store_true", help="Спробувати автофікс для прямих залежностей")
+    parser.add_argument("--keep-temp-copy", action="store_true", help="Не видаляти тимчасову копію після auto-verify")
+
     return parser
 
 
@@ -87,6 +46,24 @@ def main(argv: list[str] | None = None) -> int:
             ignore_ids=set(args.ignore_advisory),
             fetch_details=not args.no_details,
         )
+
+        if args.auto_fix:
+            for finding in result.findings:
+                candidate = build_fix_candidate(finding)
+                finding.fix_candidate = candidate
+
+                application = apply_fix_in_temp_copy(project_dir, candidate)
+                verification = verify_fix(
+                    application=application,
+                    original_finding=finding,
+                    lookup=args.lookup,
+                    api_base=args.api_base,
+                    ignore_ids=set(args.ignore_advisory),
+                    fetch_details=not args.no_details,
+                    keep_temp_copy=args.keep_temp_copy,
+                )
+                finding.verification = verification
+
     except RuntimeError as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 2
@@ -104,6 +81,3 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     return 0
-
-if __name__ == "__main__":
-    raise SystemExit(main())

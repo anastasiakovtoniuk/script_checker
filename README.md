@@ -1,36 +1,33 @@
 # script_checker
 
-## Що змінилося
-
-- `resolved.py` читає `Package.resolved` як джерело exact pinned versions / revisions.
-- `osv_client.py` виконує batched OSV lookup.
-- `graph.py` будує dependency paths через `swift package show-dependencies --format json`.
-- `analyzer.py` зшиває advisory findings із конкретними пакетами та шляхами.
-- `reporting.py` віддає або text, або JSON.
-- `spm_dep_audit.py` лишається як сумісний entrypoint.
-
 ## Запуск
 
-### 1. Згенерувати або оновити lockfile
-
+### 1. Зарезолвити залежності
 
 swift package resolve
 
+### 2. Побудувати граф залежностей
 
-### 2. Перевірка з живим графом
-
-
-python3 spm_dep_audit.py --project-dir . --fail-on-any-vuln
-
+swift package show-dependencies --format json > deps.json
 
 ### 3. JSON-режим для CI
 
-
 python3 spm_dep_audit.py --project-dir . --format json --fail-on-any-vuln
 
+### 4. Запустити звичайний аналіз
 
-### 4. Лише querybatch ids без детального добору
+python3 -B spm_dep_audit.py --project-dir . --graph-json deps.json --lookup version
 
+### 5. Згенерувати звіт та переглянути
 
-python3 spm_dep_audit.py --project-dir . --no-details
+python3 -B spm_dep_audit.py --project-dir . --graph-json deps.json --lookup version --format json > report.json
 
+cat report.json
+
+### 6. Аналіз з автофіксом та автоверифікацією 
+
+python3 -B spm_dep_audit.py --project-dir . --graph-json deps.json --lookup version --auto-fix --format json > report.json
+
+### 7. Переглянути help
+
+python3 spm_dep_audit.py --help
