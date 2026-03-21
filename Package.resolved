@@ -1,5 +1,5 @@
 {
-  "originHash" : "4bc56f19bdc30f1ac7bdc986d50377469e7df87a5011c9a74969b5cdf7ab5db4",
+  "originHash" : "43bd5b269547da0d7c01b83bb521751db14008724c84f56b8a334dafa3b8a2e8",
   "pins" : [
     {
       "identity" : "grpc-swift-2",
@@ -69,8 +69,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-collections.git",
       "state" : {
-        "revision" : "8d9834a6189db730f6264db7556a7ffb751e99ee",
-        "version" : "1.4.0"
+        "revision" : "6675bc0ff86e61436e615df6fc5174e043e57924",
+        "version" : "1.4.1"
       }
     },
     {
@@ -132,8 +132,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-nio-http2.git",
       "state" : {
-        "revision" : "b6571f3db40799df5a7fc0e92c399aa71c883edd",
-        "version" : "1.40.0"
+        "revision" : "9019b76fa858564a27e0aab13c01987d6e2869fa",
+        "version" : "1.41.0"
       }
     },
     {

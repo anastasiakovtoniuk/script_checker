@@ -1,0 +1,6 @@
+source('https://rubygems.org')
+
+gem 'bundler'
+gem 'fastlane', '>= 2.0.0'
+gem 'rake'
+gemspec
