@@ -1,36 +1,58 @@
-# script_checker
+# fastlane-plugin-spm_dependency_audit
 
-## Що змінилося
+Fastlane plugin that wraps the vendored `script_checker` Python audit tool and exposes it as the `spm_dependency_audit` action.
 
-- `resolved.py` читає `Package.resolved` як джерело exact pinned versions / revisions.
-- `osv_client.py` виконує batched OSV lookup.
-- `graph.py` будує dependency paths через `swift package show-dependencies --format json`.
-- `analyzer.py` зшиває advisory findings із конкретними пакетами та шляхами.
-- `reporting.py` віддає або text, або JSON.
-- `spm_dep_audit.py` лишається як сумісний entrypoint.
+## What the plugin does
 
-## Запуск
+The action runs the SwiftPM vulnerability audit against `Package.resolved`, optionally uses a pre-generated dependency graph, supports JSON or text output, can fail the lane according to vulnerability policy, and can enable the existing auto-fix / auto-verify flow.
 
-### 1. Згенерувати або оновити lockfile
+## Installation in another project
 
+Add the plugin from a local path while developing it:
 
-swift package resolve
+```ruby
+# fastlane/Pluginfile
+gem 'fastlane-plugin-spm_dependency_audit', path: '../fastlane-plugin-spm_dependency_audit'
+```
 
+Then run:
 
-### 2. Перевірка з живим графом
+```bash
+bundle exec fastlane install_plugins
+```
 
+## Example Fastfile usage
 
-python3 spm_dep_audit.py --project-dir . --fail-on-any-vuln
+```ruby
+lane :audit_dependencies do
+  result = spm_dependency_audit(
+    project_dir: '.',
+    format: 'json',
+    output_path: 'fastlane/reports/spm_audit_report.json',
+    fail_on_any_vuln: true,
+    verbose: true
+  )
 
+  UI.message("Findings count: #{Array(result['findings']).size}")
+end
+```
 
-### 3. JSON-режим для CI
+## Main parameters
 
+- `project_dir` — path to the SwiftPM project root.
+- `resolved` — relative path to `Package.resolved`.
+- `graph_json` — optional path to a saved `swift package show-dependencies --format json` file.
+- `lookup` — `auto`, `version`, or `commit`.
+- `format` — `json` or `text`.
+- `fail_on_any_vuln` — fails the lane if any vulnerability is found.
+- `fail_on_severity` — fails the lane on a chosen severity threshold.
+- `ignore_advisory` — array of advisory IDs to skip.
+- `auto_fix` — enables the existing auto-fix mode.
+- `keep_temp_copy` — keeps the temp project created by auto verification.
+- `python_bin` — override the Python interpreter, default `python3`.
+- `output_path` — file path for saving stdout from the audit command.
 
-python3 spm_dep_audit.py --project-dir . --format json --fail-on-any-vuln
+## Notes
 
-
-### 4. Лише querybatch ids без детального добору
-
-
-python3 spm_dep_audit.py --project-dir . --no-details
-
+- The plugin vendors the Python sources from the current repository, so it does not require a separate Python package installation.
+- The audit still needs network access to query OSV and a working Swift toolchain when the dependency graph is generated on the fly.
